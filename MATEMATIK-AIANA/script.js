@@ -182,56 +182,167 @@ function handleTimeout(){
   setTimeout(()=>{ currentIndex++; renderQuestion(); }, 900);
 }
 
-function endQuiz(){
+function endQuiz() {
   clearInterval(timer);
+
+  // Quiz карточкасын жасыр, нәтиже карточкасын көрсет
+  document.getElementById("quiz-card").classList.add("hidden");
+  resultCard.classList.remove("hidden");
+
   const totalTimeSec = Math.floor((Date.now() - startTimestamp)/1000);
-  const correctCount = records.filter(r=>r.isCorrect).length;
-  const accuracy = correctCount / TOTAL_QUESTIONS;
-  const avgTime = Math.round(records.reduce((s,r)=>s+r.timeTaken,0) / records.length * 100)/100;
+  const correctCount = records.filter(r => r.isCorrect).length;
+  const avgTime = Math.round(records.reduce((s,r) => s + r.timeTaken, 0) / records.length * 100) / 100;
+
   const maxPossible = TOTAL_QUESTIONS * (BASE_POINTS + TIME_BONUS_MAX) * (1 + 8*0.12);
   const raw = Math.max(0, totalPoints);
   const skillIndex = Math.round((raw / maxPossible) * 100000);
 
-  resultCard.classList.remove("hidden");
   finalPoints.innerText = `${formatNum(skillIndex)} pts`;
 
   breakdown.innerHTML = "";
-  const summary = document.createElement("div");
-  summary.className = "p-3 bg-white rounded-lg shadow";
-  summary.innerHTML = `<div class="text-sm text-slate-500">Дұрыс: <strong>${correctCount}/${TOTAL_QUESTIONS}</strong></div>
-    <div class="text-sm text-slate-500">Ұпай: <strong>${formatNum(totalPoints)}</strong></div>
-    <div class="text-sm text-slate-500">Жалпы уақыт: <strong>${totalTimeSec}s</strong></div>
-    <div class="text-sm text-slate-500">Орташа уақыт: <strong>${avgTime}s</strong></div>
-    <div class="text-sm text-slate-500">Ең үздік серия: <strong>${bestStreak}</strong></div>`;
-  breakdown.appendChild(summary);
 
-  records.forEach(r=>{
+const summary = document.createElement("div");
+summary.className = "p-6 bg-gradient-to-r from-indigo-50 via-white to-pink-50 rounded-2xl shadow-2xl max-w-xl mx-auto space-y-4 font-sans";
+
+// Динамикалық контентті әдемі блоктарға бөлеміз
+summary.innerHTML = `
+  <h2 class="text-2xl font-extrabold text-indigo-600 flex items-center gap-2">
+    <i class="fas fa-chart-line"></i> Жауаптардың нәтижесі
+  </h2>
+
+  <div class="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-check-circle text-green-500 text-xl"></i>
+      <span class="text-slate-700 font-semibold">Дұрыс жауаптар:</span>
+    </div>
+    <span class="text-indigo-600 font-bold text-lg">${correctCount}/${TOTAL_QUESTIONS}</span>
+  </div>
+
+  <div class="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-star text-yellow-400 text-xl"></i>
+      <span class="text-slate-700 font-semibold">Ұпай:</span>
+    </div>
+    <span class="text-indigo-600 font-bold text-lg">${formatNum(totalPoints)}</span>
+  </div>
+
+  <div class="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-clock text-blue-400 text-xl"></i>
+      <span class="text-slate-700 font-semibold">Жалпы уақыт:</span>
+    </div>
+    <span class="text-indigo-600 font-bold text-lg">${totalTimeSec}s</span>
+  </div>
+
+  <div class="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-hourglass-half text-purple-400 text-xl"></i>
+      <span class="text-slate-700 font-semibold">Орташа уақыт:</span>
+    </div>
+    <span class="text-indigo-600 font-bold text-lg">${avgTime}s</span>
+  </div>
+
+  <div class="flex items-center justify-between bg-white rounded-lg shadow-md p-4">
+    <div class="flex items-center gap-2">
+      <i class="fas fa-fire text-red-500 text-xl"></i>
+      <span class="text-slate-700 font-semibold">Ең үздік серия:</span>
+    </div>
+    <span class="text-indigo-600 font-bold text-lg">${bestStreak}</span>
+  </div>
+  
+`;
+
+breakdown.appendChild(summary);
+
+
+  // Әр сұраққа breakdown қосу
+  records.forEach(r => {
     const row = document.createElement("div");
     row.className = "mt-2 p-2 rounded-md bg-slate-50 text-sm flex items-center justify-between";
-    row.innerHTML = `<div><div class="font-medium">${r.index}. ${r.question} = ${r.correct}</div>
-      <div class="text-xs text-slate-500">Сiz таңдаған: <strong>${(r.chosen===null)?'—':r.chosen}</strong> · Уақыт: ${r.timeTaken}s</div></div>
-      <div class="text-right"><div class="${r.isCorrect ? "text-emerald-600":"text-red-600"} font-semibold">${r.pointsAwarded>0?'+':''}${r.pointsAwarded}</div></div>`;
+    row.innerHTML = `<div>
+        <div class="font-medium">${r.index}. ${r.question} = ${r.correct}</div>
+        <div class="text-xs text-slate-500">Сіз таңдаған: <strong>${(r.chosen === null) ? '—' : r.chosen}</strong> · Уақыт: ${r.timeTaken}s</div>
+      </div>
+      <div class="text-right">
+        <div class="${r.isCorrect ? "text-emerald-600" : "text-red-600"} font-semibold">
+          ${r.pointsAwarded > 0 ? '+' : ''}${r.pointsAwarded}
+        </div>
+      </div>`;
     breakdown.appendChild(row);
   });
 
   renderCharts(records);
-  const percent = (correctCount/TOTAL_QUESTIONS)*100;
-  if(percent >= 80) confetti({particleCount:120,spread:90,origin:{y:0.4}});
 
-  // smooth scroll to result
-  resultCard.scrollIntoView({behavior:"smooth"});
+  // Confetti шарттары
+  const percent = (correctCount / TOTAL_QUESTIONS) * 100;
+  if(percent >= 80) {
+    confetti({particleCount: 150, spread: 80, origin:{y:0.6}});
+  }
 }
 
-function renderCharts(data){
-  const correct = data.filter(d=>d.isCorrect).length;
-  const wrong = TOTAL_QUESTIONS - correct;
-  const ctx1 = document.getElementById("chartCorrect").getContext("2d");
-  new Chart(ctx1, { type:"doughnut", data:{ labels:["Дұрыс","Қате"], datasets:[{ data:[correct,wrong], backgroundColor:["#10b981","#ef4444"] }]}, options:{plugins:{legend:{position:"bottom"}}, responsive:true, maintainAspectRatio:false }});
-  const times = data.map(d=>d.timeTaken);
-  const labels = data.map(d=>`Q${d.index}`);
-  const ctx2 = document.getElementById("chartTime").getContext("2d");
-  new Chart(ctx2, { type:"bar", data:{ labels, datasets:[{ label:"Time (s)", data:times, backgroundColor: times.map(t=> t<3 ? "#34d399" : (t<7 ? "#f59e0b":"#f97316")) }]}, options:{ scales:{ y:{ beginAtZero:true, suggestedMax: TIME_PER_QUESTION } }, plugins:{ legend:{display:false}}, responsive:true, maintainAspectRatio:false }});
+
+function renderCharts(records) {
+  const ctxCorrect = document.getElementById("chartCorrect").getContext("2d");
+  const ctxTime = document.getElementById("chartTime").getContext("2d");
+
+  // Дұрыс/қате диаграммасы
+  new Chart(ctxCorrect, {
+    type: 'doughnut',
+    data: {
+      labels: ['Дұрыс', 'Қате'],
+      datasets: [{
+        data: [
+          records.filter(r => r.isCorrect).length,
+          records.filter(r => !r.isCorrect).length
+        ],
+        backgroundColor: ['#10B981', '#EF4444'],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+
+  // Уақыт диаграммасы
+  new Chart(ctxTime, {
+    type: 'bar',
+    data: {
+      labels: records.map(r => r.index),
+      datasets: [{
+        label: 'Уақыт (s)',
+        data: records.map(r => r.timeTaken),
+        backgroundColor: '#0EA5A4'
+      }]
+    },
+    options: {
+      scales: { y: { beginAtZero: true } }
+    }
+  });
 }
+
+// 1️⃣ resetQuiz() ішіндегі қате TIME
+function resetQuiz() {
+  totalPoints = 0;
+  currentIndex = 0;
+  bestStreak = 0;
+  streak = 0;  // <- currentStreak орнына streak қолданылды
+  records = [];
+  startTimestamp = Date.now();
+
+  document.getElementById("quiz-card").classList.remove("hidden");
+  resultCard.classList.add("hidden");
+
+  progressText.innerText = `0/${TOTAL_QUESTIONS}`;
+  scoreMini.innerText = "0";
+  streakEl.innerText = "0";
+  timerText.innerText = `${TIME_PER_QUESTION}s`;
+  document.getElementById("choices").innerHTML = "";
+
+  renderQuestion(); // <- nextQuestion() орнына renderQuestion()
+}
+
+
 
 function start(){
   generateQuestions();
@@ -239,7 +350,11 @@ function start(){
   resultCard.classList.add("hidden");
   renderQuestion();
 }
-retryBtn.onclick = ()=>{ start(); window.scrollTo({top:0,behavior:"smooth"}); };
+// 2️⃣ retryBtn.onclick дұрыс
+retryBtn.onclick = () => {
+  resetQuiz();
+  window.scrollTo({top:0, behavior:"smooth"});
+};
 shareBtn.onclick = ()=>{
   const correct = records.filter(r=>r.isCorrect).length;
   const text = `Мен ${TOTAL_QUESTIONS} сұрақтан ${correct}/${TOTAL_QUESTIONS} дұрыс жауап бердім! Ұпайым: ${formatNum(totalPoints)}.`;
@@ -252,48 +367,3 @@ if("serviceWorker" in navigator){
 window.addEventListener("load", ()=> start());
 
 
-/*
-function generateQuestions() {
-  questions = [];
-  for (let i = 0; i < TOTAL_QUESTIONS; i++) {
-    let a, b;
-
-    while (true) {
-      a = randTwoDigit();
-      b = randTwoDigit();
-
-      const unitA = a % 10;
-      const unitB = b % 10;
-
-      // Теріс нәтиже болмауы үшін
-      if (a <= b) continue;
-
-      // Шарт: егер a-ның бірлігі 9 болса, b-ның бірлігі 0 болуы керек
-      if (unitA === 9) {
-        if (unitB !== 0) continue;
-      } else {
-        // Әйтпесе, b-ның бірлігі a-ның бірлігінен үлкен болуы керек
-        if (unitB <= unitA) continue;
-      }
-
-      break; // шарттар орындалды
-    }
-
-    const correct = a - b; // Азайту
-    const answers = new Set([correct]);
-
-    // Қате жауаптар генерациясы
-    while (answers.size < 4) {
-      let offset = (Math.random() < 0.15)
-        ? (Math.floor(Math.random() * 50) - 25)
-        : (Math.floor(Math.random() * 21) - 10);
-      let wrong = correct + offset;
-      if (wrong > 0) answers.add(wrong);
-    }
-
-    questions.push({
-      a,
-
-
-
-*/
